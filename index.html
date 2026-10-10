@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบรายงานโล่/รางวัล - องค์การบริหารส่วนตำบลพลับพลาไชย (Premium Edition)</title>
+  
+  <!-- CDNs for Libraries -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.1/vanilla-tilt.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    * { font-family: 'Sarabun', sans-serif; box-sizing: border-box; }
+    
+    :root {
+      --ink: #0f172a;
+      --surface: rgba(255, 255, 255, 0.75);
+      --glass-border: rgba(255, 255, 255, 0.4);
+    }
+
+    body {
+      background: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.12), transparent 30%),
+                  radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.12), transparent 30%),
+                  linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      background-attachment: fixed;
+      color: var(--ink);
+    }
+
+    /* Glassmorphism Styles */
+    .glass-panel {
+      background: var(--surface);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+    }
+
+    /* Award Card Metallic Effects */
+    .award-card {
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+      background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+      transform-style: preserve-3d;
+    }
+    
+    .award-gold {
+      background: linear-gradient(135deg, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fbf5b7 75%, #aa771c 100%);
+      color: #3b2503;
+    }
+    
+    .award-silver {
+      background: linear-gradient(135deg, #e0e0e0 0%, #f5f5f5 25%, #4a5568 50%, #cbd5e1 75%, #94a3b8 100%);
+      color: #0f172a;
+    }
+
+    .award-bronze {
+      background: linear-gradient(135deg, #ca7d42 0%, #f7c59f 25%, #8c4211 50%, #e3a87c 75%, #6a2e05 100%);
+      color: #2e0d00;
+    }
+
+    /* Shimmer Effect */
+    .shimmer {
+      position: relative;
+      overflow: hidden;
+    }
+    .shimmer::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      transform: translateX(-100%);
+      animation: shimmer 2.5s infinite;
+    }
+    @keyframes shimmer { 100% { transform: translateX(100%); } }
+
+    /* Timeline View Styles */
+    .timeline-container::before {
+      content: ''; position: absolute; top: 0; bottom: 0; left: 50%;
+      width: 4px; background: #cbd5e1; transform: translateX(-50%);
+    }
+    @media (max-width: 768px) {
+      .timeline-container::before { left: 20px; }
+    }
+
+    /* Drag and Drop Zone */
+    .drag-drop-zone {
+      border: 2px dashed #94a3b8;
+      transition: all 0.3s ease;
+    }
+    .drag-drop-zone.dragover {
+      border-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .theme-dark {
+      --ink: #f8fafc;
+      --surface: rgba(15, 23, 42, 0.85);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      background: radial-gradient(circle at 10% 20%, rgba(30, 58, 138, 0.3), transparent 30%),
+                  linear-gradient(135deg, #020617 0%, #0f172a 100%) !important;
+      color: var(--ink);
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- Top Announcement Bar / Spotlight Slider -->
+  <div class="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-slate-950 py-2.5 px-4 text-center font-bold text-sm shadow-md">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <span class="flex items-center gap-2"><i class="fas fa-crown text-amber-900 animate-bounce"></i> <span id="spotlightText">🏆 รางวัลไฮไลต์ปี 2567: นวัตกรรม "6 ต. Quality" รางวัลชนะเลิศระดับประเทศ</span></span>
+      <button onclick="nextSpotlight()" class="text-xs bg-black/10 hover:bg-black/20 px-3 py-1 rounded-full transition-all">ถัดไป <i class="fas fa-chevron-right ml-1"></i></button>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="sticky top-0 z-40 glass-panel border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <div class="w-14 h-14 bg-gradient-to-tr from-amber-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 transform hover:rotate-6 transition-all">
+          <i class="fas fa-trophy text-white text-2xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl md:text-2xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">ระบบรายงานโล่/รางวัล</h1>
+          <p class="text-xs md:text-sm text-slate-500 font-medium">องค์การบริหารส่วนตำบลพลับพลาไชย อ.อู่ทอง จ.สุพรรณบุรี</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-3">
+        <button id="viewToggleBtn" onclick="toggleViewMode()" class="glass-panel p-2.5 rounded-xl hover:bg-white/50 text-slate-700 transition-all" title="สลับมุมมอง (Grid/Timeline)">
+          <i class="fas fa-stream text-lg"></i>
+        </button>
+        <button id="themeToggle" onclick="toggleTheme()" class="glass-panel p-2.5 rounded-xl hover:bg-white/50 text-slate-700 transition-all" title="เปลี่ยนธีม">
+          <i class="fas fa-moon text-lg"></i>
+        </button>
+        <button onclick="loadDataFromSheet()" class="glass-panel p-2.5 rounded-xl hover:bg-white/50 text-blue-600 transition-all" title="ซิงค์ข้อมูล">
+          <i class="fas fa-sync-alt text-lg"></i>
+        </button>
+        <button id="adminToggle" onclick="toggleAdminMode()" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-xl font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-105 transition-all text-sm flex items-center gap-2">
+          <i class="fas fa-user-shield"></i> <span class="hidden md:inline">Admin Access</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Interactive Dashboard -->
+  <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      
+      <!-- Stats Cards -->
+      <div class="lg:col-span-1 grid grid-cols-2 gap-4">
+        <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
+          <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-125 transition-all duration-500">
+            <i class="fas fa-trophy text-8xl text-amber-500"></i>
+          </div>
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-400">รางวัลทั้งหมด</p>
+          <p class="text-3xl font-black text-slate-800 dark:text-white mt-1" id="statTotal">0</p>
+          <span class="text-xs text-emerald-500 font-semibold mt-2 inline-flex items-center"><i class="fas fa-arrow-up mr-1"></i> สะสมต่อเนื่อง</span>
+        </div>
+
+        <div class="glass-panel p-5 rounded-2xl border-l-4 border-amber-400 relative overflow-hidden group">
+          <p class="text-xs font-bold uppercase tracking-wider text-amber-600">ระดับประเทศ</p>
+          <p class="text-3xl font-black text-amber-500 mt-1" id="statNational">0</p>
+          <span class="text-xs text-amber-600/80 font-medium mt-2 block">เกียรติยศสูงสุด</span>
+        </div>
+
+        <div class="glass-panel p-5 rounded-2xl border-l-4 border-slate-400 relative overflow-hidden group">
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-500">ระดับภาค</p>
+          <p class="text-3xl font-black text-slate-600 dark:text-slate-300 mt-1" id="statRegional">0</p>
+          <span class="text-xs text-slate-400 font-medium mt-2 block">ผลงานระดับภูมิภาค</span>
+        </div>
+
+        <div class="glass-panel p-5 rounded-2xl border-l-4 border-orange-500 relative overflow-hidden group">
+          <p class="text-xs font-bold uppercase tracking-wider text-orange-600">ระดับจังหวัด</p>
+          <p class="text-3xl font-black text-orange-500 mt-1" id="statProvincial">0</p>
+          <span class="text-xs text-orange-600/80 font-medium mt-2 block">การพัฒนาท้องถิ่น</span>
+        </div>
+      </div>
+
+      <!-- Charts Section -->
+      <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between">
+        <h3 class="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2 flex items-center justify-between">
+          <span><i class="fas fa-chart-pie text-blue-500 mr-2"></i>สัดส่วนตามระดับรางวัล</span>
+        </h3>
+        <div class="relative h-44 flex items-center justify-center">
+          <canvas id="typeDoughnutChart"></canvas>
+        </div>
+      </div>
+
+      <div class="glass-panel p-5 rounded-2xl flex flex-col justify-between">
+        <h3 class="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2 flex items-center justify-between">
+          <span><i class="fas fa-chart-bar text-indigo-500 mr-2"></i>การได้รับรางวัลแยกตามปี พ.ศ.</span>
+        </h3>
+        <div class="relative h-44">
+          <canvas id="yearBarChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Filter & Toolbar -->
+    <div class="glass-panel p-4 rounded-2xl mb-8 flex flex-wrap gap-4 items-center justify-between">
+      <div class="flex-1 min-w-[280px] relative">
+        <i class="fas fa-search absolute left-4 top-3.5 text-slate-400"></i>
+        <input type="text" id="searchInput" oninput="filterAndPaginate()" placeholder="ค้นหาชื่อรางวัล, รายละเอียด, หมวดหมู่..." class="w-full pl-11 pr-4 py-2.5 rounded-xl border-none bg-slate-100/80 dark:bg-slate-800/80 focus:ring-2 focus:ring-blue-500 text-sm">
+      </div>
+
+      <div class="flex flex-wrap gap-2 items-center">
+        <button class="filter-btn active px-4 py-2 rounded-xl text-xs font-bold transition-all bg-blue-600 text-white shadow-md shadow-blue-500/20" data-filter="all" onclick="setFilter(this, 'all')">ทั้งหมด</button>
+        <button class="filter-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200" data-filter="national" onclick="setFilter(this, 'national')">ระดับประเทศ 🥇</button>
+        <button class="filter-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200" data-filter="regional" onclick="setFilter(this, 'regional')">ระดับภาค 🥈</button>
+        <button class="filter-btn px-4 py-2 rounded-xl text-xs font-bold transition-all bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200" data-filter="provincial" onclick="setFilter(this, 'provincial')">ระดับจังหวัด 🥉</button>
+
+        <select id="yearFilter" onchange="filterAndPaginate()" class="px-3 py-2 rounded-xl border-none bg-slate-100 dark:bg-slate-800 text-xs font-bold">
+          <option value="all">ทุกปี พ.ศ.</option>
+          <option value="2567">2567</option>
+          <option value="2566">2566</option>
+          <option value="2565">2565</option>
+        </select>
+
+        <button id="addAwardBtn" onclick="openEditModal()" class="hidden bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/25 transition-all items-center gap-1.5">
+          <i class="fas fa-plus"></i> เพิ่มรางวัล
+        </button>
+      </div>
+    </div>
+
+    <!-- Awards Grid Container -->
+    <div id="gridView" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+    <!-- Timeline View Container (Hidden by default) -->
+    <div id="timelineView" class="hidden relative timeline-container space-y-8 my-8 px-4"></div>
+
+    <!-- Pagination -->
+    <div class="flex justify-between items-center mt-8 glass-panel p-4 rounded-2xl">
+      <span id="resultsCount" class="text-xs text-slate-500 font-medium">แสดง 0 รายการ</span>
+      <div id="paginationButtons" class="flex gap-2"></div>
+    </div>
+  </section>
+
+  <!-- Award Detail Modal (With QR Code & Share) -->
+  <div id="awardModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="glass-panel bg-white dark:bg-slate-900 rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8 shadow-2xl relative">
+      <button onclick="closeModal('awardModal')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 text-xl">
+        <i class="fas fa-times"></i>
+      </button>
+
+      <div id="modalDetailContent"></div>
+
+      <!-- Social Share & QR Code Section -->
+      <div class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p class="text-xs font-bold text-slate-400 mb-2">สแกนดูผ่านมือถือ</p>
+          <div id="qrcode" class="p-2 bg-white rounded-xl shadow-md inline-block"></div>
+        </div>
+
+        <div>
+          <p class="text-xs font-bold text-slate-400 mb-2">แชร์ผลงานนี้</p>
+          <div class="flex gap-2">
+            <button onclick="shareAward('line')" class="bg-emerald-500 text-white p-2.5 rounded-xl hover:bg-emerald-600"><i class="fab fa-line text-lg"></i></button>
+            <button onclick="shareAward('facebook')" class="bg-blue-600 text-white p-2.5 rounded-xl hover:bg-blue-700"><i class="fab fa-facebook text-lg"></i></button>
+            <button onclick="shareAward('copy')" class="bg-slate-700 text-white p-2.5 rounded-xl hover:bg-slate-800"><i class="fas fa-link text-lg"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Login Modal -->
+  <div id="loginModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="glass-panel bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-8 shadow-2xl">
+      <div class="text-center mb-6">
+        <div class="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-blue-500/30">
+          <i class="fas fa-lock text-2xl"></i>
+        </div>
+        <h3 class="text-xl font-extrabold">เข้าสู่ระบบผู้ดูแล</h3>
+      </div>
+      <form onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="text-xs font-bold text-slate-500 mb-1 block">ชื่อผู้ใช้</label>
+          <input type="text" id="username" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm" required placeholder="admin">
+        </div>
+        <div>
+          <label class="text-xs font-bold text-slate-500 mb-1 block">รหัสผ่าน</label>
+          <input type="password" id="password" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-transparent text-sm" required placeholder="••••••••">
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="submit" class="flex-1 bg-blue-600 text-white py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/25">เข้าสู่ระบบ</button>
+          <button type="button" onclick="closeModal('loginModal')" class="px-4 bg-slate-200 dark:bg-slate-800 rounded-xl font-bold text-sm">ยกเลิก</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add/Edit Award Modal (With Drag & Drop File Upload) -->
+  <div id="editModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="glass-panel bg-white dark:bg-slate-900 rounded-3xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8 shadow-2xl">
+      <h3 id="editModalTitle" class="text-xl font-extrabold mb-6">เพิ่มรางวัลใหม่</h3>
+      
+      <form id="awardForm" onsubmit="handleAwardSubmit(event)" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-bold text-slate-500 mb-1 block">ชื่อรางวัล *</label>
+            <input type="text" id="awardTitle" required class="w-full px-4 py-2 rounded-xl border bg-transparent text-sm">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500 mb-1 block">ระดับรางวัล *</label>
+            <select id="awardType" required class="w-full px-4 py-2 rounded-xl border bg-transparent text-sm">
+              <option value="national">ระดับประเทศ 🥇</option>
+              <option value="regional">ระดับภาค 🥈</option>
+              <option value="provincial">ระดับจังหวัด 🥉</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500 mb-1 block">ปี พ.ศ. *</label>
+            <input type="text" id="awardYear" placeholder="2567" required class="w-full px-4 py-2 rounded-xl border bg-transparent text-sm">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500 mb-1 block">วันที่ได้รับ *</label>
+            <input type="text" id="awardDate" placeholder="10 มกราคม 2567" required class="w-full px-4 py-2 rounded-xl border bg-transparent text-sm">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500 mb-1 block">หมวดหมู่ *</label>
+            <input type="text" id="awardCategory" required class="w-full px-4 py-2 rounded-xl border bg-transparent text-sm">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500 mb-1 block">หน่วยงานที่มอบ *</label>
+            <input type="text" id="awardOrganization" required class="w-full px-4 py-2 rounded-xl border bg-transparent text-sm">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-xs font-bold text-slate-500 mb-1 block">รายละเอียด *</label>
+          <textarea id="awardDescription" rows="3" required class="w-full px-4 py-2 rounded-xl border bg-transparent text-sm"></textarea>
+        </div>
+
+        <!-- File Upload Drag & Drop Zone -->
+        <div class="drag-drop-zone p-6 rounded-2xl text-center cursor-pointer" id="dropZone" onclick="document.getElementById('awardImage').click()">
+          <i class="fas fa-cloud-upload-alt text-3xl text-slate-400 mb-2"></i>
+          <p class="text-xs font-bold text-slate-600 dark:text-slate-300">ลากรูปภาพมาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์ภาพรางวัล</p>
+          <input type="file" id="awardImage" accept="image/*" class="hidden" onchange="previewImage(this)">
+          <div id="imagePreviewContainer" class="mt-3 hidden">
+            <img id="imagePreview" class="max-h-32 mx-auto rounded-xl shadow-md">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs font-bold text-slate-500 mb-1 block">ไฟล์หนังสือคำสั่ง (PDF/Doc)</label>
+            <input type="file" id="orderDocument" accept=".pdf,.doc,.docx" class="w-full text-xs">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-slate-500 mb-1 block">ไฟล์เกียรติบัตร (PDF/JPG)</label>
+            <input type="file" id="certificate" accept=".pdf,image/*" class="w-full text-xs">
+          </div>
+        </div>
+
+        <div class="flex gap-3 pt-4">
+          <button type="submit" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/25">บันทึกข้อมูล</button>
+          <button type="button" onclick="closeModal('editModal')" class="px-6 bg-slate-200 dark:bg-slate-800 rounded-xl font-bold text-sm">ยกเลิก</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const CONFIG = {
+      SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyG9pCm5D5CiXKUq9C-VAGmsX_nRakweHQuN02mtf2LE6zsUjpSMWGXTjQm3FfWiALcyw/exec',
+      ITEMS_PER_PAGE: 9
+    };
+
+    let awards = [];
+    let filteredAwards = [];
+    let currentPage = 1;
+    let isAdminMode = false;
+    let viewMode = 'grid'; // 'grid' or 'timeline'
+    let doughnutChart = null;
+    let barChart = null;
+    let currentSelectedAward = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDataFromSheet();
+      setupDragAndDrop();
+    });
+
+    async function loadDataFromSheet() {
+      try {
+        const response = await fetch(`${CONFIG.SCRIPT_URL}?action=getData`);
+        const data = await response.json();
+        if (data.success) {
+          awards = data.data || [];
+          filterAndPaginate();
+          updateDashboard();
+        }
+      } catch (err) {
+        console.error('Data load error:', err);
+      }
+    }
+
+    // Dashboard & Chart Renderers
+    function updateDashboard() {
+      const national = awards.filter(a => a.type === 'national').length;
+      const regional = awards.filter(a => a.type === 'regional').length;
+      const provincial = awards.filter(a => a.type === 'provincial').length;
+
+      animateCounter('statTotal', awards.length);
+      animateCounter('statNational', national);
+      animateCounter('statRegional', regional);
+      animateCounter('statProvincial', provincial);
+
+      renderCharts(national, regional, provincial);
+    }
+
+    function animateCounter(id, target) {
+      let current = 0;
+      const el = document.getElementById(id);
+      const increment = Math.ceil(target / 20) || 1;
+      const timer = setInterval(() => {
+        current += increment;
+        if (current >= target) {
+          el.innerText = target;
+          clearInterval(timer);
+        } else {
+          el.innerText = current;
+        }
+      }, 40);
+    }
+
+    function renderCharts(nat, reg, prov) {
+      // Doughnut Chart
+      const ctxD = document.getElementById('typeDoughnutChart').getContext('2d');
+      if (doughnutChart) doughnutChart.destroy();
+      doughnutChart = new Chart(ctxD, {
+        type: 'doughnut',
+        data: {
+          labels: ['ระดับประเทศ', 'ระดับภาค', 'ระดับจังหวัด'],
+          datasets: [{
+            data: [nat, reg, prov],
+            backgroundColor: ['#f59e0b', '#64748b', '#f97316']
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      });
+
+      // Bar Chart by Year
+      const years = [...new Set(awards.map(a => a.year))].sort();
+      const yearCounts = years.map(y => awards.filter(a => a.year === y).length);
+
+      const ctxB = document.getElementById('yearBarChart').getContext('2d');
+      if (barChart) barChart.destroy();
+      barChart = new Chart(ctxB, {
+        type: 'bar',
+        data: {
+          labels: years.map(y => 'ปี ' + y),
+          datasets: [{
+            label: 'จำนวนรางวัล',
+            data: yearCounts,
+            backgroundColor: '#6366f1',
+            borderRadius: 8
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      });
+    }
+
+    // Filter & Paginate
+    function filterAndPaginate() {
+      const activeFilter = document.querySelector('.filter-btn.active')?.dataset.filter || 'all';
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const year = document.getElementById('yearFilter').value;
+
+      filteredAwards = awards.filter(a => {
+        const matchType = activeFilter === 'all' || a.type === activeFilter;
+        const matchYear = year === 'all' || a.year === year;
+        const matchSearch = !search || a.title.toLowerCase().includes(search) || a.description.toLowerCase().includes(search);
+        return matchType && matchYear && matchSearch;
+      });
+
+      renderCurrentView();
+    }
+
+    function setFilter(btn, type) {
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('active', 'bg-blue-600', 'text-white');
+        b.classList.add('bg-slate-100', 'text-slate-600');
+      });
+      btn.classList.add('active', 'bg-blue-600', 'text-white');
+      filterAndPaginate();
+    }
+
+    // View Switching (Grid vs Timeline)
+    function toggleViewMode() {
+      viewMode = viewMode === 'grid' ? 'timeline' : 'grid';
+      document.getElementById('gridView').classList.toggle('hidden', viewMode !== 'grid');
+      document.getElementById('timelineView').classList.toggle('hidden', viewMode !== 'timeline');
+      renderCurrentView();
+    }
+
+    function renderCurrentView() {
+      if (viewMode === 'grid') renderGrid();
+      else renderTimeline();
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('gridView');
+      grid.innerHTML = '';
+      
+      const start = (currentPage - 1) * CONFIG.ITEMS_PER_PAGE;
+      const pageData = filteredAwards.slice(start, start + CONFIG.ITEMS_PER_PAGE);
+
+      pageData.forEach(award => {
+        const badge = award.type === 'national' ? 'award-gold' : award.type === 'regional' ? 'award-silver' : 'award-bronze';
+        const card = document.createElement('div');
+        card.className = `award-card p-6 rounded-2xl cursor-pointer relative shadow-xl overflow-hidden text-slate-900 dark:text-white ${badge}`;
+        card.setAttribute('data-tilt', '');
+        card.onclick = () => showAwardDetail(award);
+
+        card.innerHTML = `
+          <div class="flex justify-between items-start mb-4">
+            <span class="text-2xl">${award.type === 'national' ? '🥇' : award.type === 'regional' ? '🥈' : '🥉'}</span>
+            <span class="text-xs font-extrabold px-3 py-1 rounded-full bg-black/10">${award.year}</span>
+          </div>
+          <h4 class="font-extrabold text-lg leading-snug mb-2">${award.title}</h4>
+          <p class="text-xs opacity-80 line-clamp-2 mb-4">${award.description}</p>
+          <div class="flex justify-between items-center text-[10px] font-bold opacity-75">
+            <span>${award.organization}</span>
+            <span>${award.date}</span>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      VanillaTilt.init(document.querySelectorAll(".award-card"), { max: 10, speed: 400 });
+    }
+
+    function renderTimeline() {
+      const timeline = document.getElementById('timelineView');
+      timeline.innerHTML = '';
+
+      filteredAwards.forEach((award, index) => {
+        const item = document.createElement('div');
+        const isLeft = index % 2 === 0;
+        item.className = `flex flex-col md:flex-row items-center ${isLeft ? 'md:flex-row-reverse' : ''}`;
+        
+        item.innerHTML = `
+          <div class="w-full md:w-1/2 p-4">
+            <div class="glass-panel p-6 rounded-2xl cursor-pointer hover:scale-105 transition-all" onclick='showAwardDetail(${JSON.stringify(award)})'>
+              <span class="text-xs font-bold text-blue-500">${award.year} - ${award.date}</span>
+              <h4 class="font-bold text-base mt-1">${award.title}</h4>
+              <p class="text-xs text-slate-500 mt-2 line-clamp-2">${award.description}</p>
+            </div>
+          </div>
+        `;
+        timeline.appendChild(item);
+      });
+    }
+
+    // Modal Details & Confetti Effect
+    function showAwardDetail(award) {
+      currentSelectedAward = award;
+      const content = document.getElementById('modalDetailContent');
+      content.innerHTML = `
+        <div class="text-center mb-6">
+          <span class="text-5xl mb-2 inline-block">${award.type === 'national' ? '🏆' : '🏅'}</span>
+          <h2 class="text-2xl font-black">${award.title}</h2>
+          <span class="inline-block bg-blue-100 text-blue-700 font-bold px-3 py-1 rounded-full text-xs mt-2">พ.ศ. ${award.year}</span>
+        </div>
+        ${award.image ? `<img src="${award.image}" class="w-full max-h-64 object-cover rounded-2xl mb-4 shadow-md">` : ''}
+        <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4">${award.description}</p>
+        <div class="grid grid-cols-2 gap-2 text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 p-4 rounded-xl">
+          <div>หน่วยงาน: ${award.organization}</div>
+          <div>หมวดหมู่: ${award.category}</div>
+        </div>
+      `;
+
+      // Trigger Confetti for National level awards
+      if (award.type === 'national') {
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      }
+
+      // Generate QR Code
+      document.getElementById('qrcode').innerHTML = '';
+      new QRCode(document.getElementById('qrcode'), {
+        text: window.location.href,
+        width: 64,
+        height: 64
+      });
+
+      document.getElementById('awardModal').classList.remove('hidden');
+      document.getElementById('awardModal').classList.add('flex');
+    }
+
+    // Social Sharing
+    function shareAward(platform) {
+      const url = encodeURIComponent(window.location.href);
+      const text = encodeURIComponent(`ขอแสดงความยินดีกับผลงานรางวัล: ${currentSelectedAward?.title || ''}`);
+
+      if (platform === 'line') window.open(`https://line.me/R/msg/text/?${text}%20${url}`);
+      else if (platform === 'facebook') window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`);
+      else if (platform === 'copy') {
+        navigator.clipboard.writeText(window.location.href);
+        Swal.fire({ icon: 'success', title: 'คัดลอกลิงก์สำเร็จ', timer: 1500, showConfirmButton: false });
+      }
+    }
+
+    // Drag & Drop Upload Handlers
+    function setupDragAndDrop() {
+      const zone = document.getElementById('dropZone');
+      ['dragenter', 'dragover'].forEach(name => zone.addEventListener(name, (e) => { e.preventDefault(); zone.classList.add('dragover'); }));
+      ['dragleave', 'drop'].forEach(name => zone.addEventListener(name, (e) => { e.preventDefault(); zone.classList.remove('dragover'); }));
+      zone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files.length) {
+          document.getElementById('awardImage').files = files;
+          previewImage(document.getElementById('awardImage'));
+        }
+      });
+    }
+
+    function previewImage(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          document.getElementById('imagePreview').src = e.target.result;
+          document.getElementById('imagePreviewContainer').classList.remove('hidden');
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    // Admin & UI Handlers
+    function toggleAdminMode() {
+      if (!isAdminMode) document.getElementById('loginModal').classList.remove('hidden'), document.getElementById('loginModal').classList.add('flex');
+      else {
+        isAdminMode = false;
+        document.getElementById('addAwardBtn').classList.add('hidden');
+        Swal.fire({ icon: 'info', title: 'ออกจากระบบ Admin แล้ว', timer: 1500, showConfirmButton: false });
+      }
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      if (document.getElementById('username').value === 'admin' && document.getElementById('password').value === 'admin123') {
+        isAdminMode = true;
+        closeModal('loginModal');
+        document.getElementById('addAwardBtn').classList.remove('hidden');
+        Swal.fire({ icon: 'success', title: 'เข้าสู่ระบบ Admin สำเร็จ!', timer: 1500, showConfirmButton: false });
+      } else Swal.fire({ icon: 'error', title: 'รหัสผ่านไม่ถูกต้อง' });
+    }
+
+    function openEditModal() {
+      document.getElementById('editModal').classList.remove('hidden');
+      document.getElementById('editModal').classList.add('flex');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+      document.getElementById(id).classList.remove('flex');
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle('theme-dark');
+    }
+
+    function nextSpotlight() {
+      document.getElementById('spotlightText').innerText = '🏆 รางวัลสถานศึกษาคุณธรรมต้นแบบ (วัยต้วมเตี้ยม) ระดับภาค ปี 2567';
+    }
+  </script>
+</body>
+</html>
